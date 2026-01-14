@@ -52,7 +52,7 @@ async function main() {
       console.log(`   TX Hash: ${anchorMapping.txHash || 'N/A'}`);
       console.log(`   Block Number: ${anchorMapping.blockNumber || 'N/A'}`);
       console.log(`   Timestamp: ${anchorMapping.timestamp || 'N/A'}`);
-      console.log(`   Contract: ${anchorMapping.contractAddress || 'N/A'}\n');
+      console.log(`   Contract: ${anchorMapping.contractAddress || 'N/A'}\n`);
 
       // Validate required fields
       const requiredFields = ['merkleRoot', 'txHash', 'blockNumber', 'timestamp', 'contractAddress'];
