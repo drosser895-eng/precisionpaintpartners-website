@@ -1,0 +1,71 @@
+# Netlify deployment configuration for Verifier UI
+
+[build]
+  # Base directory containing the verifier UI application
+  base = "verifier-ui"
+  
+  # Command to build the application
+  command = "npm run build"
+  
+  # Directory containing the built static files
+  publish = "verifier-ui/build"
+
+[build.environment]
+  # Node.js version to use for builds
+  NODE_VERSION = "16"
+  
+  # NPM version
+  NPM_VERSION = "8"
+
+# Redirect rules for single-page application
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  # Only apply to paths that don't match static files
+  conditions = {path = "!/**/*.js"}
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Prevent MIME type sniffing
+    X-Content-Type-Options = "nosniff"
+    
+    # Enable XSS protection
+    X-XSS-Protection = "1; mode=block"
+    
+    # Prevent clickjacking
+    X-Frame-Options = "DENY"
+    
+    # Strict transport security (HTTPS only)
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    
+    # Content Security Policy
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.infura.io https://*.alchemy.com https://*.etherscan.io"
+
+# Cache static assets
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache HTML with shorter duration
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Environment-specific deploy contexts
+[context.production]
+  command = "npm run build"
+  
+[context.deploy-preview]
+  command = "npm run build"
+
+[context.branch-deploy]
+  command = "npm run build"
+
+# Plugin configuration (optional)
+# [[plugins]]
+#   package = "@netlify/plugin-lighthouse"

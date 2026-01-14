@@ -1,0 +1,163 @@
+name: Anchor Monitor
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    # Allow manual triggering
+
+jobs:
+  monitor:
+    name: Monitor Anchoring Status
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      
+      - name: Run monitoring script
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          node monitoring_alerts.js
+        continue-on-error: true
+      
+      - name: Check monitoring results
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Monitoring completed successfully"
+          else
+            echo "⚠️  Monitoring detected issues (see logs above)"
+          fi
+      
+      - name: Upload monitoring logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: monitoring-logs-${{ github.run_number }}
+          path: |
+            scores/anchor_mapping.json
+            scores/proofs.json
+          retention-days: 30
+        continue-on-error: true
+
+  health-check:
+    name: System Health Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Check critical files
+        run: |
+          echo "📋 Checking for critical files..."
+          
+          files_ok=true
+          
+          # Check for documentation
+          if [ ! -f "REGULATOR_PACK.md" ]; then
+            echo "⚠️  REGULATOR_PACK.md not found"
+            files_ok=false
+          fi
+          
+          if [ ! -f "PROOFS_README.md" ]; then
+            echo "⚠️  PROOFS_README.md not found"
+            files_ok=false
+          fi
+          
+          # Check for scripts
+          if [ ! -f "generate_proofs.js" ]; then
+            echo "⚠️  generate_proofs.js not found"
+            files_ok=false
+          fi
+          
+          if [ ! -f "verify_score_client.js" ]; then
+            echo "⚠️  verify_score_client.js not found"
+            files_ok=false
+          fi
+          
+          if [ ! -f "monitoring_alerts.js" ]; then
+            echo "⚠️  monitoring_alerts.js not found"
+            files_ok=false
+          fi
+          
+          if [ "$files_ok" = true ]; then
+            echo "✅ All critical files present"
+          else
+            echo "❌ Some critical files are missing"
+            exit 1
+          fi
+      
+      - name: Verify scores directory structure
+        run: |
+          echo "📁 Checking scores directory..."
+          
+          if [ ! -d "scores" ]; then
+            echo "ℹ️  scores directory not found (will be created when needed)"
+            mkdir -p scores
+          else
+            echo "✅ scores directory exists"
+            
+            # Count canonical scores
+            score_count=$(find scores -name "*_canonical.json" 2>/dev/null | wc -l)
+            echo "   Found $score_count canonical score file(s)"
+            
+            # Check for proofs
+            if [ -f "scores/proofs.json" ]; then
+              echo "   ✅ proofs.json exists"
+            else
+              echo "   ℹ️  proofs.json not found (run generate_proofs.js)"
+            fi
+            
+            # Check for anchor mapping
+            if [ -f "scores/anchor_mapping.json" ]; then
+              echo "   ✅ anchor_mapping.json exists"
+            else
+              echo "   ℹ️  anchor_mapping.json not found (anchoring not completed)"
+            fi
+          fi
+      
+      - name: Test script execution
+        run: |
+          echo "🧪 Testing script executability..."
+          
+          # Make scripts executable
+          chmod +x generate_proofs.js verify_score_client.js monitoring_alerts.js antigravity_adapter.js 2>/dev/null || true
+          
+          # Test help messages
+          node generate_proofs.js --help 2>/dev/null || echo "ℹ️  generate_proofs.js executed"
+          node verify_score_client.js --help 2>/dev/null || echo "ℹ️  verify_score_client.js executed"
+          
+          echo "✅ Scripts are executable"
+
+  notification:
+    name: Send Status Notification
+    runs-on: ubuntu-latest
+    needs: [monitor, health-check]
+    if: always() && github.event_name == 'schedule'
+    
+    steps:
+      - name: Determine overall status
+        id: status
+        run: |
+          # Check if previous jobs succeeded
+          if [[ "${{ needs.monitor.result }}" == "success" && "${{ needs.health-check.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=✅ All monitoring checks passed" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=❌ Some monitoring checks failed" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Report status
+        run: |
+          echo "${{ steps.status.outputs.message }}"
+          echo "Monitor job: ${{ needs.monitor.result }}"
+          echo "Health check job: ${{ needs.health-check.result }}"

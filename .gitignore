@@ -1,0 +1,46 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Private keys and sensitive data
+*.pem
+*.key
+private_key.txt
+secrets.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Optional: Scores directory (uncomment if scores should not be committed)
+# scores/
+# !scores/.gitkeep
+
+# Package locks (optional - uncomment if you don't want to commit)
+# package-lock.json
+# yarn.lock
