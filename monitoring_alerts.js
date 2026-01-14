@@ -114,7 +114,7 @@ async function main() {
         warnings.push({
           severity: 'warning',
           message: 'Transaction hash format may be invalid',
-          details: `Expected 66-character hex string, got: ${anchorMapping.txHash}`,
+          details: `Expected 0x followed by 64 hex characters, got: ${anchorMapping.txHash}`,
           action: 'Verify transaction on block explorer'
         });
       }
